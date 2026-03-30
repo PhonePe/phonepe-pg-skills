@@ -22,8 +22,8 @@ This skill collection provides AI-powered assistance for:
 
 - ✅ **Authentication** - OAuth token generation and management for PhonePe PG APIs
 - ✅ **Standard Checkout** - One-time payment integration
+- ✅ **Check Payment Status** - Query order state (COMPLETED, PENDING, FAILED) with full payment details
 - ✅ **Refunds** - Processing full or partial refunds
-- 🔄 **AutoPay** - Recurring payment setup (coming soon)
 
 These skills follow PhonePe's official API specifications and handle common integration scenarios, error handling, and best practices.
 
