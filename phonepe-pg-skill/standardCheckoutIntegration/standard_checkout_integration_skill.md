@@ -9,8 +9,6 @@
 ### **Dependencies**
 
 * **Auth Provider:** [SKILL_AUTH_GENERATE](../SKILL.md#1-authentication-skill-base) 
-* **Refund Provider:** [SKILL_PAYMENT_REFUND](../SKILL.md#2-refund-skill)
-
 ---
 
 ### **Execution Flow**
@@ -19,7 +17,8 @@
 2. **Context Passing:** Pass the `access_token` returned from the parent skill into the request header
 3. **Build Request Payload:** Construct the payload with REQUIRED fields (see below)
 4. **Make API Call:** POST to the appropriate endpoint
-5. **Handle Response:** Return `redirectUrl` on success or error details on failure
+5. **Handle Response:** Extract `redirectUrl` from the success response
+6. **Launch Payment Page:** Pass `redirectUrl` to `LAUNCH_PAYMENT_PAGE` — the PhonePe JS SDK **must** be used; directly navigating to the URL will fail
 
 ---
 
@@ -156,21 +155,25 @@ Each object in `enabledPaymentModes` or `disabledPaymentModes` supports the foll
 
 **Example - Enable only UPI and Debit Cards:**
 ```json
-"paymentModeConfig": {
-    "enabledPaymentModes": [
-        {"type": "UPI_INTENT"},
-        {"type": "UPI_COLLECT"},
-        {"type": "CARD", "cardTypes": ["DEBIT_CARD"]}
-    ]
+{
+    "paymentModeConfig": {
+        "enabledPaymentModes": [
+            {"type": "UPI_INTENT"},
+            {"type": "UPI_COLLECT"},
+            {"type": "CARD", "cardTypes": ["DEBIT_CARD"]}
+        ]
+    }
 }
 ```
 
 **Example - Disable specific payment modes:**
 ```json
-"paymentModeConfig": {
-    "disabledPaymentModes": [
-        {"type": "NET_BANKING"}
-    ]
+{
+    "paymentModeConfig": {
+        "disabledPaymentModes": [
+            {"type": "NET_BANKING"}
+        ]
+    }
 }
 ```
 
@@ -227,8 +230,174 @@ The API returns a payment URL that must be presented to the user.
 - [ ] Provide valid `redirectUrl` for callback
 - [ ] Use correct endpoint based on environment (sandbox/production)
 - [ ] Handle 401 errors by refreshing token
-- [ ] Return `redirectUrl` to user on success
+- [ ] Pass the returned `redirectUrl` to `LAUNCH_PAYMENT_PAGE` — **never** navigate to it directly
 - [ ] Handle error responses appropriately
+
+---
+
+## **Skill: LAUNCH_PAYMENT_PAGE**
+
+**Description:** Launches the PhonePe payment page using the official PhonePe JavaScript SDK after obtaining `redirectUrl` from `INITIATE_STANDARD_CHECKOUT_PAYMENT`.
+
+> ⚠️ **AI MUST inform merchants:** Simply opening `redirectUrl` in a browser tab (`window.location.href`, anchor tag, etc.) does **not** work. PhonePe's payment page validates the merchant's registered domain via HTTP referrer headers. The JS SDK is the only supported method to correctly set this context.
+
+---
+
+### **Dependencies**
+
+* **Payment Initiator:** `INITIATE_STANDARD_CHECKOUT_PAYMENT` — provides the `redirectUrl` (used as `tokenUrl`)
+
+---
+
+### **Execution Flow**
+
+1. **Receive `redirectUrl`** from `INITIATE_STANDARD_CHECKOUT_PAYMENT`
+2. **Include JS SDK** — add `checkout.js` script tag to the checkout page
+3. **Define callback** — handle `USER_CANCEL` and `CONCLUDED` responses
+4. **Invoke `PhonePeCheckout.transact()`** with `tokenUrl`, `callback`, and `type`
+5. **On `CONCLUDED`** — call `CHECK_PAYMENT_STATUS` to verify the actual payment outcome
+
+---
+
+### **Step 1 — Include the PhonePe Checkout Script**
+
+Add the following script tag to your checkout page HTML. The script appends the `PhonePeCheckout` object to `window`.
+
+| Environment | Script URL |
+|-------------|-----------|
+| Sandbox     | `https://mercury-stg.phonepe.com/web/bundle/checkout.js` |
+| Production  | `https://mercury.phonepe.com/web/bundle/checkout.js` |
+
+```html
+<!-- Sandbox -->
+<script src="https://mercury-stg.phonepe.com/web/bundle/checkout.js"></script>
+
+<!-- Production -->
+<script src="https://mercury.phonepe.com/web/bundle/checkout.js"></script>
+```
+
+**`PhonePeCheckout` exposes two methods:**
+
+| Method | Description |
+|--------|-------------|
+| `PhonePeCheckout.transact(options)` | Launches the payment page (IFrame or Redirect) |
+| `PhonePeCheckout.closePage()` | Manually closes the IFrame — exceptional cases only |
+
+---
+
+### **Step 2 — Launch the Payment Page**
+
+Use the `redirectUrl` from `INITIATE_STANDARD_CHECKOUT_PAYMENT` as the `tokenUrl` parameter.
+
+#### **IFrame Mode (Recommended)**
+
+Opens the payment page embedded within your website. Provides the best user experience.
+
+```javascript
+function phonePeCallback(response) {
+  if (response === 'USER_CANCEL') {
+    // User dismissed the payment page without completing payment
+    // Update UI to allow the user to retry
+    return;
+  } else if (response === 'CONCLUDED') {
+    // Payment reached a terminal state (completed or failed)
+    // ⚠️ Do NOT assume success — always verify via CHECK_PAYMENT_STATUS
+    verifyPaymentStatus(merchantOrderId);
+    return;
+  }
+}
+
+window.PhonePeCheckout.transact({
+  tokenUrl: redirectUrl,   // redirectUrl from INITIATE_STANDARD_CHECKOUT_PAYMENT
+  callback: phonePeCallback,
+  type: "IFRAME"
+});
+```
+
+#### **Redirect Mode**
+
+Navigates the user to the PhonePe payment page. After completion, the user is redirected to `merchantUrls.redirectUrl`.
+
+```javascript
+window.PhonePeCheckout.transact({ tokenUrl: redirectUrl });
+```
+
+---
+
+### **Callback Response Reference**
+
+| Response | Meaning | Required Action |
+|----------|---------|-----------------|
+| `USER_CANCEL` | User closed the payment IFrame without completing payment | Update UI; allow user to retry with the same or new order |
+| `CONCLUDED` | Payment reached a terminal state | Call `CHECK_PAYMENT_STATUS` to confirm success or failure |
+
+> ⚠️ `CONCLUDED` means the payment **flow ended** — it does not indicate success. Always call `CHECK_PAYMENT_STATUS` to get the definitive `state`.
+
+---
+
+### **Manually Closing the IFrame**
+
+Only use in exceptional cases (e.g., session timeout). The IFrame closes automatically on payment conclusion.
+
+```javascript
+window.PhonePeCheckout.closePage();
+```
+
+---
+
+### **Flutter Web Integration**
+
+**1. Add the script to `web/index.html`:**
+
+```html
+<script src="https://mercury-stg.phonepe.com/web/bundle/checkout.js" defer></script>
+```
+
+**2. Define a JS bridge function in your HTML:**
+
+```javascript
+window.checkout = (tokenUrl, type, callback) => {
+  if (window && window.PhonePeCheckout && window.PhonePeCheckout.transact) {
+    window.PhonePeCheckout.transact({ tokenUrl, callback, type });
+  }
+};
+```
+
+**3. Invoke from Dart:**
+
+```dart
+import 'dart:js' as js;
+
+void launchPhonePePayPage(String redirectUrl) {
+  if (js.context.hasProperty('checkout')) {
+    js.context.callMethod('checkout', [
+      redirectUrl,
+      'IFRAME',
+      js.allowInterop(phonePeCallback),
+    ]);
+  }
+}
+
+void phonePeCallback(String response) {
+  if (response == 'USER_CANCEL') {
+    // Handle cancellation
+  } else if (response == 'CONCLUDED') {
+    // Verify via CHECK_PAYMENT_STATUS
+  }
+}
+```
+
+---
+
+### **Implementation Checklist for AI**
+
+- [ ] **Always inform the merchant** that the PhonePe JS SDK is required — direct URL navigation will fail
+- [ ] Include the correct `checkout.js` script URL for the target environment (sandbox vs production)
+- [ ] Use `redirectUrl` from `INITIATE_STANDARD_CHECKOUT_PAYMENT` as the `tokenUrl`
+- [ ] Prefer **IFrame mode** (`type: "IFRAME"`) for embedded payment experience
+- [ ] Implement the `callback` function to handle both `USER_CANCEL` and `CONCLUDED`
+- [ ] On `CONCLUDED`, always call `CHECK_PAYMENT_STATUS` — never assume the outcome from the callback alone
+- [ ] For Flutter web, use the JS interop bridge pattern with `js.allowInterop`
 
 ---
 
@@ -240,7 +409,7 @@ The API returns a payment URL that must be presented to the user.
 
 ### **Dependencies**
 
-* **Auth Provider:** [SKILL_AUTH_GENERATE](../SKILL.md#skill-auth-generate)
+* **Auth Provider:** [SKILL_AUTH_GENERATE](../SKILL.md#1-authentication-skill-base)
 
 ---
 
@@ -499,10 +668,11 @@ GET https://api-preprod.phonepe.com/apis/pg-sandbox/checkout/v2/order/TX123456/s
 **Typical Flow:**
 
 1. Call `INITIATE_STANDARD_CHECKOUT_PAYMENT` → Get `redirectUrl`
-2. User completes payment on PhonePe page
-3. User redirected back to merchant's `redirectUrl`
-4. Call `CHECK_PAYMENT_STATUS` with `merchantOrderId` to verify payment
-5. Based on `state`:
+2. Call `LAUNCH_PAYMENT_PAGE` with the `redirectUrl` using the PhonePe JS SDK
+3. User completes payment on the PhonePe payment page
+4. Callback fires with `CONCLUDED` (or user cancels with `USER_CANCEL`)
+5. Call `CHECK_PAYMENT_STATUS` with `merchantOrderId` to verify the definitive payment state
+6. Based on `state`:
    - **COMPLETED** → Fulfill order
    - **PENDING** → Poll status until COMPLETED/FAILED or timeout
    - **FAILED** → Show error, allow retry
@@ -511,3 +681,103 @@ GET https://api-preprod.phonepe.com/apis/pg-sandbox/checkout/v2/order/TX123456/s
 - Poll every 5-10 seconds for PENDING orders
 - Stop polling after order `expireAt` timestamp
 - Maximum 10-15 poll attempts to avoid excessive API calls
+
+---
+
+## **Retry Strategy**
+
+### **`merchantOrderId` Uniqueness Rules**
+
+`merchantOrderId` must be **unique per transaction**. PhonePe rejects any reuse with `INVALID_MERCHANT_ORDER_ID` (HTTP 417).
+
+| Rule | Detail |
+|------|--------|
+| Always use a unique ID | Each new payment attempt requires a new `merchantOrderId` — reuse always fails |
+| Never reuse on failure | If a payment fails or expires, generate a **new** unique `merchantOrderId` for the retry |
+| Never reuse across customers | Each customer transaction must have a globally unique order ID |
+| ID constraints | Max 63 chars; alphanumeric, `_`, and `-` only |
+
+### **Retry Strategy for API Errors**
+
+| Error | Retry? | Strategy |
+|-------|--------|----------|
+| 401 AUTHORIZATION_FAILED | Yes | Refresh token via `SKILL_AUTH_GENERATE`, retry once |
+| 500 INTERNAL_SERVER_ERROR | Yes | Exponential backoff: wait 2s, 4s, 8s (max 3 retries) |
+| 400 BAD_REQUEST | No | Fix request payload; do not retry as-is |
+| 417 INVALID_TRANSACTION_ID | No | Generate a new unique `merchantOrderId` and retry |
+| Network timeout | Yes | Check order status via `CHECK_PAYMENT_STATUS` before retrying to avoid duplicate orders |
+
+---
+
+## **Webhook / Server Callback Verification**
+
+Server-side webhook callbacks provide a more reliable payment verification method than polling or relying on client-side redirects.
+
+### **How Callbacks Work**
+
+1. PhonePe POSTs a callback to your server URL after a payment state change
+2. The callback payload contains the `merchantOrderId` and updated order `state`
+
+### **Callback Payload Example**
+
+```json
+{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071317",
+        "merchantId": "merchantId",
+        "merchantOrderId": "merchantOrderId",
+        "state": "COMPLETED",
+        "amount": 10000,
+        "expireAt": 1724866793837,
+        "paymentDetails": [
+            {
+                "paymentMode": "UPI_QR",
+                "transactionId": "OM12334",
+                "timestamp": 1724866793837,
+                "amount": 10000,
+                "state": "COMPLETED"
+            }
+        ],
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": "",
+            "udf5": "",
+            "udf6": "",
+            "udf7": "",
+            "udf8": "",
+            "udf9": "",
+            "udf10": "",
+            "udf11": "",
+            "udf12": "",
+            "udf13": "",
+            "udf14": "",
+            "udf15": ""
+        }
+    }
+}
+```
+
+### **Recommended Callback Handler Flow**
+
+1. Receive POST callback from PhonePe
+2. Extract `merchantOrderId` from payload
+3. If `state == "COMPLETED"` → fulfill the order
+4. Respond with HTTP 200 to acknowledge receipt
+
+---
+
+## **Edge Cases & Common Integration Errors**
+
+| Scenario | Cause | Prevention / Fix |
+|----------|-------|-----------------|
+| Duplicate `merchantOrderId` | Same ID reused for a new transaction | Always generate a unique ID per transaction; PhonePe fails the request with `INVALID_MERCHANT_ORDER_ID` (HTTP 417) |
+| Amount below minimum | `amount < 100` paisa | Enforce minimum ₹1 (100 paisa) on the client side before calling the API |
+| Token expired mid-flow | Token used after `expires_at` | Check `current_time >= expires_at - 60`; proactively refresh token |
+| Order expired before payment | User took too long; `expireAt` passed | Create a new order; expired orders cannot be paid |
+| Order ID reuse after failure | Using same ID for a retry after FAILED | Generate a new `merchantOrderId`; failed orders are final |
+| Environment mismatch | Sandbox credentials used against production URL | Use environment-aware config; validate `PHONEPE_ENV` at startup |
+| Missing redirectUrl | `paymentFlow.merchantUrls.redirectUrl` omitted | This field is required; always provide a valid HTTPS callback URL |
+| Card payments not appearing | `CARD` type not in `enabledPaymentModes` | Explicitly add `{"type": "CARD", "cardTypes": [...]}` to enable card payments |
