@@ -115,7 +115,23 @@ clone_repository() {
 
     TEMP_CLONE_DIR=$(mktemp -d)
 
-    if timeout 60 git clone "$REPO_URL" "$TEMP_CLONE_DIR"; then
+    # Run git clone with a timeout. `timeout` is not available on macOS by
+    # default (it's GNU coreutils), so we implement a portable fallback using
+    # a background watcher process.
+    git_clone_with_timeout() {
+        local seconds=60
+        git clone "$REPO_URL" "$TEMP_CLONE_DIR" &
+        local clone_pid=$!
+        ( sleep "$seconds" && kill "$clone_pid" 2>/dev/null ) &
+        local watcher_pid=$!
+        wait "$clone_pid" 2>/dev/null
+        local exit_code=$?
+        kill "$watcher_pid" 2>/dev/null
+        wait "$watcher_pid" 2>/dev/null
+        return $exit_code
+    }
+
+    if git_clone_with_timeout; then
         print_success "Repository cloned successfully"
         SKILLS_SOURCE_DIR="$TEMP_CLONE_DIR/phonepe-pg-skill"
 
