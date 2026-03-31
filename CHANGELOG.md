@@ -2,6 +2,46 @@
 
 All notable changes to the PhonePe PG Skills are documented in this file.
 
+## [1.3.1]
+
+### Added
+- **phonepe-pg-skill/standardCheckoutAutoPay/standard_checkout_auto_pay_skill.md**: New Standard Checkout AutoPay skill
+  - `AUTOPAY_SC_SETUP` — Subscription mandate setup via Standard Checkout endpoint (`/checkout/v2/pay`) with `SUBSCRIPTION_SETUP` flow; returns `redirectUrl` to PhonePe's hosted page
+  - Documents full integration: setup → JS SDK launch → callback → Notify → Redeem cycle
+  - Comparison table: Standard Checkout AutoPay vs Custom Checkout AutoPay
+
+### Changed
+- **phonepe-pg-skill/customCheckoutAutoPay/**: Renamed from `autoPay/`; contains `custom_checkout_auto_pay_skill.md` (Custom Checkout API-based mandate setup via UPI_INTENT/UPI_COLLECT)
+- **phonepe-pg-skill/standardCheckoutAutoPay/**: New folder for hosted-page mandate setup
+- **phonepe-pg-skill/SKILL.md**: Updated section 4 to document both AutoPay variants (4a Standard Checkout, 4b Custom Checkout)
+- **README.md**: Clarified AutoPay supports both Standard and Custom Checkout integration types
+
+## [1.3.0]
+
+### Added
+- **phonepe-pg-skill/customCheckoutIntegration/custom_checkout_integration_skill.md**: New Custom Checkout one-time payment skill
+  - `CUSTOM_CHECKOUT_PAY` — Initiates payment with 6 payment modes: UPI_INTENT, UPI_COLLECT, UPI_QR, NET_BANKING, CARD, TOKEN
+  - `CUSTOM_CHECKOUT_ORDER_STATUS` — Checks order-level payment status
+  - `CUSTOM_CHECKOUT_TRANSACTION_STATUS` — Checks specific transaction attempt status
+  - PCI endpoint routing for CARD and TOKEN payment modes
+  - Device context requirements for UPI_INTENT (iOS vs Android differences)
+  - Full field tables with required/optional indicators and constraints
+
+- **phonepe-pg-skill/autoPay/auto_pay_skill.md**: New AutoPay / Subscription recurring payments skill
+  - `AUTOPAY_SETUP` — Subscription mandate setup with PENNY_DROP or TRANSACTION auth workflows
+  - `AUTOPAY_NOTIFY` — Pre-cycle notification before each billing deduction
+  - `AUTOPAY_REDEEM` — Executes the actual deduction for a billing cycle
+  - `AUTOPAY_SUBSCRIPTION_STATUS` — Checks mandate health including pause dates
+  - `AUTOPAY_ORDER_STATUS` — Checks status of specific setup or redemption orders
+  - `AUTOPAY_CANCEL` — Permanent subscription cancellation
+  - Frequency reference table (DAILY through ON_DEMAND)
+  - Retry & error strategy for failed redemptions
+  - End-to-end lifecycle flow documentation
+
+### Updated
+- **phonepe-pg-skill/SKILL.md**: Added AutoPay and Custom Checkout skill references; expanded `When to Apply` triggers to include custom checkout and subscription scenarios
+- **README.md**: Added Custom Checkout and AutoPay to Available Skills section
+
 ## [1.2.0]
 
 ### Added

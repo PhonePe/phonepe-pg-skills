@@ -8,10 +8,13 @@ metadata:
 
 ## When to Apply
 Reference these guidelines when:
-- Implementing PhonePe PG payment checkout integration
+- Implementing PhonePe PG Standard Checkout payment integration
+- Implementing PhonePe PG Custom Checkout with UPI, Card, or Net Banking
+- Setting up AutoPay / recurring subscription payments via PhonePe PG
 - Generating or refreshing PhonePe PG OAuth authentication tokens
 - Processing refunds for completed PhonePe PG transactions
-- Checking PhonePe payment status or handling payment callbacks
+- Checking PhonePe payment or subscription status
+- Handling PhonePe payment callbacks or webhook verification
 - Debugging `AUTHORIZATION_FAILED`, `INVALID_TRANSACTION_ID`, or token expiry errors
 - Switching between PhonePe sandbox and production environments
 
@@ -194,3 +197,57 @@ Content-Type: application/json
 - [ ] Handle 401 by refreshing the token and retrying once
 - [ ] Store the returned `refundId` for tracking
 - [ ] Inform the user that the initial `state` will be `PENDING`; completion is asynchronous
+
+---
+
+## **3. Standard Checkout One-Time Payment Skills**
+
+For Standard Checkout (PhonePe-hosted payment page + JS SDK), refer to:
+[Standard Checkout Integration](./standardCheckoutIntegration/standard_checkout_integration_skill.md)
+
+Skills included:
+- **INITIATE_STANDARD_CHECKOUT_PAYMENT** — Create a payment order and get the hosted page URL
+- **LAUNCH_PAYMENT_PAGE** — Open the payment page via PhonePe JS SDK (required; direct navigation fails)
+- **CHECK_PAYMENT_STATUS** — Poll order status until COMPLETED or FAILED
+
+---
+
+## **4. Standard Checkout AutoPay Skills**
+
+For recurring subscription mandate setup using PhonePe's hosted page and JS SDK, refer to:
+[Standard Checkout AutoPay](./standardCheckoutAutoPay/standard_checkout_auto_pay_skill.md)
+
+Skills included:
+- **AUTOPAY_SC_SETUP** — Create subscription order (`SUBSCRIPTION_CHECKOUT_SETUP`); launch hosted page via JS SDK
+- **AUTOPAY_SC_ORDER_STATUS** — Check setup or redemption order status
+- **AUTOPAY_SC_SUBSCRIPTION_STATUS** — Check subscription mandate health
+- **AUTOPAY_SC_NOTIFY** — Notify customer 24h before deduction (`SUBSCRIPTION_CHECKOUT_REDEMPTION`)
+- **AUTOPAY_SC_REDEEM** — Execute the deduction for a billing cycle
+- **AUTOPAY_SC_CANCEL** — Cancel the subscription permanently (merchant-initiated)
+
+---
+
+## **5. Custom Checkout One-Time Payment Skills**
+
+For Custom Checkout (merchant-controlled payment UI), refer to:
+[Custom Checkout Integration](./customCheckoutIntegration/custom_checkout_integration_skill.md)
+
+Skills included:
+- **CUSTOM_CHECKOUT_PAY** — Initiate payment with UPI_INTENT, UPI_COLLECT, UPI_QR, NET_BANKING, CARD, TOKEN
+- **CUSTOM_CHECKOUT_ORDER_STATUS** — Check payment order status
+- **CUSTOM_CHECKOUT_TRANSACTION_STATUS** — Check specific transaction attempt status
+
+---
+
+## **6. Custom Checkout AutoPay Skills**
+
+For recurring subscription mandate setup where the merchant controls the payment UI (UPI_INTENT or UPI_COLLECT), refer to:
+[Custom Checkout AutoPay](./customCheckoutAutoPay/custom_checkout_auto_pay_skill.md)
+
+Skills included:
+- **AUTOPAY_SETUP** — Set up mandate via API with UPI_INTENT or UPI_COLLECT (`SUBSCRIPTION_SETUP`)
+- **AUTOPAY_NOTIFY** — Notify PhonePe before each billing cycle
+- **AUTOPAY_REDEEM** — Execute deduction for a billing cycle
+- **AUTOPAY_SUBSCRIPTION_STATUS** — Check subscription mandate status
+- **AUTOPAY_ORDER_STATUS** — Check specific order status
+- **AUTOPAY_CANCEL** — Cancel the subscription permanently
