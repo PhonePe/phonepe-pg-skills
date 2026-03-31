@@ -403,21 +403,21 @@ Redirects the user to their bank's net banking portal.
         "type": "PG",
         "merchantUrls": {
             "redirectUrl": "https://merchant.example.com/payment/callback"
-        }
-    },
-    "paymentMode": {
-        "type": "TOKEN",
-        "authMode": "3DS",
-        "tokenDetails": {
-            "encryptedToken": "<RSA-4096-encrypted-token>",
-            "encryptionKeyId": 100001,
-            "encryptedCvv": "<RSA-4096-encrypted-cvv>",
-            "expiry": {
-                "month": "12",
-                "year": "2028"
-            },
-            "panSuffix": "1234",
-            "cardHolderName": "John Doe"
+        },
+        "paymentMode": {
+            "type": "TOKEN",
+            "authMode": "3DS",
+            "tokenDetails": {
+                "encryptedToken": "<RSA-4096-encrypted-token>",
+                "encryptionKeyId": 100001,
+                "encryptedCvv": "<RSA-4096-encrypted-cvv>",
+                "expiry": {
+                    "month": "12",
+                    "year": "2028"
+                },
+                "panSuffix": "1234",
+                "cardHolderName": "John Doe"
+            }
         }
     }
 }
@@ -425,7 +425,9 @@ Redirects the user to their bank's net banking portal.
 
 > ⚠️ Send this request to `https://cards.phonepe.com/apis/pg/payments/v2/pay` in production (not `api.phonepe.com`).
 
-| HTTP Code | Error Code | Description | AI Action |
+---
+
+### **Error Responses**
 |-----------|------------|-------------|-----------|
 | 400 | BAD_REQUEST | Invalid payload or missing required field | Validate all fields for the selected payment mode |
 | 401 | AUTHORIZATION_FAILED | Token expired or invalid | Call `SKILL_AUTH_GENERATE`, retry once |

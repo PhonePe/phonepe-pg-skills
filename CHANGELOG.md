@@ -6,7 +6,7 @@ All notable changes to the PhonePe PG Skills are documented in this file.
 
 ### Added
 - **phonepe-pg-skill/standardCheckoutAutoPay/standard_checkout_auto_pay_skill.md**: New Standard Checkout AutoPay skill
-  - `AUTOPAY_SC_SETUP` — Subscription mandate setup via Standard Checkout endpoint (`/checkout/v2/pay`) with `SUBSCRIPTION_SETUP` flow; returns `redirectUrl` to PhonePe's hosted page
+  - `AUTOPAY_SC_SETUP` — Subscription mandate setup via Standard Checkout endpoint (`/checkout/v2/pay`) with `SUBSCRIPTION_CHECKOUT_SETUP` flow; returns `redirectUrl` to PhonePe's hosted page
   - Documents full integration: setup → JS SDK launch → callback → Notify → Redeem cycle
   - Comparison table: Standard Checkout AutoPay vs Custom Checkout AutoPay
 - **phonepe-pg-skill/customCheckoutIntegration/custom_checkout_integration_skill.md**: New Custom Checkout one-time payment skill

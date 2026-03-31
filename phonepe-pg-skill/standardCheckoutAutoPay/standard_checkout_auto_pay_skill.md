@@ -72,7 +72,7 @@ Content-Type: application/json
 |-------|------|----------|-------------|-------------|
 | `merchantOrderId` | String | **YES** | Unique order ID for this setup transaction | Max 63 chars; alphanumeric, `_`, `-` only |
 | `amount` | Long | **YES** | Mandate authorization amount in paisa | PENNY_DROP: must be exactly `200`; TRANSACTION: min `100` |
-| `expireAfter` | Long | NO | Order expiry in seconds | Min: 300, Max: 3600 |
+| `expireAfter` | Long | NO | Order expiry in **seconds** | Min: 300, Max: 3600. ⚠️ This is seconds — NOT epoch ms. Custom Checkout AutoPay uses `expireAt` (epoch milliseconds) instead. |
 | `metaInfo` | Object | NO | Merchant metadata returned in callbacks | `udf1–udf10`: max 256 chars; `udf11–udf15`: max 50 chars, alphanumeric + `_ - + @ .` |
 | `paymentFlow` | Object | **YES** | Subscription setup configuration | — |
 

@@ -77,7 +77,7 @@ Content-Type: application/json
 | `paymentFlow` | Object | **YES** | Subscription setup flow configuration | — |
 | `deviceContext` | Object | **YES** | Device OS of the customer's device | Required for UPI_INTENT |
 | `deviceContext.deviceOS` | String | **YES** | Operating system of the customer's device | `"ANDROID"` or `"IOS"` |
-| `expireAt` | Long | NO | Order expiry (epoch milliseconds) | Default: 5 minutes |
+| `expireAt` | Long | NO | Order expiry (epoch **milliseconds**) | Default: 5 minutes. ⚠️ This is epoch ms — NOT seconds. Standard Checkout AutoPay uses `expireAfter` (seconds) instead. |
 | `metaInfo` | Object | NO | Merchant metadata (returned in status/callback) | `udf1–udf10`: max 256 chars; `udf11–udf15`: max 50 chars, alphanumeric + `_ - + @ .` only. **Key names must not be renamed — production error otherwise.** |
 
 #### **`paymentFlow` Fields (type = `SUBSCRIPTION_SETUP`)**
@@ -360,7 +360,7 @@ PhonePe does not auto-schedule redemptions — the merchant's backend is respons
 | Value | Description |
 |-------|-------------|
 | `STANDARD` | PhonePe retries on failure using a standard retry schedule |
-| `CUSTOM` | Merchant controls retry timing (requires additional configuration) |
+| `CUSTOM` | Merchant controls retry timing — max 4 attempts (1 + 3 retries); retries must be separated by at least 1.5 hours; retries must occur during **non-peak hours only**: 9:31 PM–9:59 AM IST or 1:01 PM–4:59 PM IST |
 
 ---
 
@@ -525,13 +525,27 @@ PhonePe does not auto-schedule redemptions — the merchant's backend is respons
 
 ### **Response**
 
-Returns the same `OrderStatusResponse` structure as `CHECK_PAYMENT_STATUS`.
+Returns `OrderStatusResponse`. States vary by order type:
+
+#### **Setup Order States**
 
 | State | Meaning | Action |
 |-------|---------|--------|
-| `COMPLETED` | Setup authorized / deduction successful | Proceed; update records |
-| `PENDING` | In progress | Poll every 5–10s |
-| `FAILED` | Failed | Check `errorCode`; retry with new `merchantOrderId` |
+| `PENDING` | Customer has not yet authorized the mandate | Poll every 5–10s |
+| `COMPLETED` | Mandate authorized; subscription is `ACTIVE` | Proceed to billing cycles |
+| `FAILED` | Authorization failed or timed out | Check `errorCode`; re-initiate setup |
+
+#### **Redemption Order States (after Notify or Redeem)**
+
+| State | Meaning | Action |
+|-------|---------|--------|
+| `PENDING` | Notify sent / Redeem in progress | Poll every 5–10s |
+| `NOTIFIED` | Customer notified; 24h window started | Wait ≥24h, then call `AUTOPAY_REDEEM` (if `autoDebit = false`) |
+| `COMPLETED` | Deduction successful | Update records; schedule next cycle |
+| `FAILED` | Deduction failed | Check `errorCode`; retry per strategy |
+| `EXPIRED` | Order expired without completion | Treat as failed; retry with new `merchantOrderId` |
+
+> ⚠️ Always poll `AUTOPAY_ORDER_STATUS` after `AUTOPAY_NOTIFY` and wait for `NOTIFIED` before calling `AUTOPAY_REDEEM`. Calling Redeem without `NOTIFIED` violates the regulatory 24h notification requirement.
 
 ---
 
@@ -572,9 +586,13 @@ Phase 1 — Setup (One-time, customer action required)
 
 Phase 2 — Each Billing Cycle (Automated, no customer action)
 ─────────────────────────────────────────────────────────────
-4. Call AUTOPAY_NOTIFY with new merchantOrderId for the cycle
-5. Call AUTOPAY_REDEEM with the same merchantOrderId
-6. Poll AUTOPAY_ORDER_STATUS until COMPLETED or FAILED
+4. Call AUTOPAY_SUBSCRIPTION_STATUS → confirm state = ACTIVE
+5. Call AUTOPAY_NOTIFY with new merchantOrderId + amount for the cycle
+6. Poll AUTOPAY_ORDER_STATUS → wait for NOTIFIED
+7. Wait ≥ 24 hours (regulatory requirement)
+8. If autoDebit=false: Call AUTOPAY_REDEEM with the same merchantOrderId
+   If autoDebit=true:  PhonePe auto-executes after 24h — do NOT call AUTOPAY_REDEEM
+9. Poll AUTOPAY_ORDER_STATUS until COMPLETED, FAILED, or EXPIRED (may take up to 48h)
    → If FAILED: check errorCode, retry or notify customer
 
 Phase 3 — Subscription Management
