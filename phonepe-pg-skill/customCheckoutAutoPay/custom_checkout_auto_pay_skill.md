@@ -9,11 +9,20 @@ AutoPay enables merchants to collect recurring payments from customers with a si
 ## **AutoPay Lifecycle Overview**
 
 ```
-1. SETUP    → Customer authorizes the subscription mandate (one-time)
-2. NOTIFY   → Merchant informs PhonePe before each deduction cycle
-3. REDEEM   → PhonePe executes the actual deduction
-4. STATUS   → Merchant checks subscription or order status
-5. CANCEL   → Merchant cancels the subscription when needed
+Phase 1 — Setup (one-time):
+  AUTOPAY_SETUP → Customer authorizes mandate → AUTOPAY_ORDER_STATUS (confirm COMPLETED)
+
+Phase 2 — Per billing cycle (repeat):
+  AUTOPAY_SUBSCRIPTION_STATUS → confirm ACTIVE
+  AUTOPAY_NOTIFY (with amount for this cycle)
+  AUTOPAY_ORDER_STATUS → confirm NOTIFIED
+  Wait ≥ 24 hours
+  AUTOPAY_REDEEM (if autoDebit=false) OR wait for PhonePe auto-execute (if autoDebit=true)
+  AUTOPAY_ORDER_STATUS → confirm COMPLETED/FAILED (may take up to 48h)
+
+Phase 3 — Lifecycle management:
+  AUTOPAY_SUBSCRIPTION_STATUS → check for PAUSED/REVOKED/EXPIRED
+  AUTOPAY_CANCEL → permanently end subscription
 ```
 
 ---
@@ -103,7 +112,7 @@ Content-Type: application/json
 | `QUARTERLY` | Every quarter |
 | `HALFYEARLY` | Every six months |
 | `YEARLY` | Every year |
-| `ONDEMAND` | No fixed schedule — merchant triggers each cycle manually via Notify + Redeem |
+| `ON_DEMAND` | No fixed schedule — merchant triggers each cycle manually via Notify + Redeem |
 
 #### **`paymentMode` Options**
 
@@ -196,6 +205,7 @@ iOS `targetApp` = static value from: `PHONEPE`, `GPAY`, `PAYTM`, `CRED`, `SUPERM
         "udf6": "",
         "udf7": "",
         "udf8": "",
+        "udf9": "",
         "udf10": "",
         "udf11": "ref-001",
         "udf12": "",
@@ -292,7 +302,7 @@ Merchants are responsible for scheduling cycles according to the `frequency` agr
 | `DAILY` | Trigger Notify + Redeem every day (respecting 24h gap) |
 | `WEEKLY` | Trigger Notify + Redeem once per week |
 | `MONTHLY` | Trigger Notify + Redeem once per month |
-| `ONDEMAND` | Trigger Notify + Redeem whenever a debit is needed (no fixed schedule) |
+| `ON_DEMAND` | Trigger Notify + Redeem whenever a debit is needed (no fixed schedule) |
 | Others | Trigger per the agreed interval |
 
 PhonePe does not auto-schedule redemptions — the merchant's backend is responsible for initiating each cycle.
@@ -330,9 +340,10 @@ PhonePe does not auto-schedule redemptions — the merchant's backend is respons
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `merchantOrderId` | String | **YES** | Unique order ID for this deduction cycle |
+| `amount` | Long | **YES** | Deduction amount in paisa for this cycle | 
 | `paymentFlow.type` | String | **YES** | Must be `"SUBSCRIPTION_REDEMPTION"` |
 | `paymentFlow.merchantSubscriptionId` | String | **YES** | The subscription ID from `AUTOPAY_SETUP` |
-| `paymentFlow.redemptionRetryStrategy` | String | **YES** | Retry behavior on failure |
+| `paymentFlow.redemptionRetryStrategy` | String | NO | Retry behavior on failure | Default: `"STANDARD"` |
 | `paymentFlow.autoDebit` | Boolean | NO | If `true`, PhonePe automatically executes the debit after 24 hours — merchant does **not** call `AUTOPAY_REDEEM`. If `false` (default), merchant must call `AUTOPAY_REDEEM` explicitly after 24 hours. |
 
 #### **`autoDebit` — Two Execution Paths**
@@ -358,6 +369,7 @@ PhonePe does not auto-schedule redemptions — the merchant's backend is respons
 ```json
 {
     "merchantOrderId": "CYCLE-ORD-001",
+    "amount": 49900,
     "paymentFlow": {
         "type": "SUBSCRIPTION_REDEMPTION",
         "merchantSubscriptionId": "SUB-CUST-001-MONTHLY",
@@ -375,6 +387,8 @@ PhonePe does not auto-schedule redemptions — the merchant's backend is respons
     "state": "PENDING"
 }
 ```
+
+> **Note:** The initial Notify response state is `PENDING`. Poll `AUTOPAY_ORDER_STATUS` until it transitions to `NOTIFIED` before considering the notification successful. (Standard Checkout AutoPay returns `NOTIFICATION_IN_PROGRESS` instead — this difference is by design.)
 
 ---
 
@@ -490,7 +504,8 @@ PhonePe does not auto-schedule redemptions — the merchant's backend is respons
 | `ACTIVE` | Subscription is live; deductions can proceed |
 | `PENDING` | Awaiting customer authorization (setup not yet complete) |
 | `PAUSED` | Temporarily paused by customer |
-| `CANCELLED` | Permanently cancelled; cannot be reactivated |
+| `REVOKED` | User removed mandate via PSP app; subscription is terminated |
+| `CANCELLED` | Permanently cancelled by merchant; cannot be reactivated |
 | `EXPIRED` | Past `expireAt`; no further deductions |
 
 ---

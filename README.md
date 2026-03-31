@@ -255,7 +255,7 @@ module.exports = {
 
 ## Contributing
 
-Contributions to PG Java SDK are welcome! Here's how you can contribute:
+Contributions to PhonePe PG Skills are welcome! Here's how you can contribute:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)

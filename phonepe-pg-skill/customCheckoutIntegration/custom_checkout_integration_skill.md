@@ -393,9 +393,37 @@ Redirects the user to their bank's net banking portal.
 | `tokenDetails.cardHolderName` | String | NO | Cardholder name |
 | `merchantUserId` | String | NO | Merchant's user ID |
 
----
+### **Sample Request (TOKEN)**
 
-### **Error Responses**
+```json
+{
+    "merchantOrderId": "CC-ORD-TOKEN-001",
+    "amount": 49900,
+    "paymentFlow": {
+        "type": "PG",
+        "merchantUrls": {
+            "redirectUrl": "https://merchant.example.com/payment/callback"
+        }
+    },
+    "paymentMode": {
+        "type": "TOKEN",
+        "authMode": "3DS",
+        "tokenDetails": {
+            "encryptedToken": "<RSA-4096-encrypted-token>",
+            "encryptionKeyId": 100001,
+            "encryptedCvv": "<RSA-4096-encrypted-cvv>",
+            "expiry": {
+                "month": "12",
+                "year": "2028"
+            },
+            "panSuffix": "1234",
+            "cardHolderName": "John Doe"
+        }
+    }
+}
+```
+
+> ⚠️ Send this request to `https://cards.phonepe.com/apis/pg/payments/v2/pay` in production (not `api.phonepe.com`).
 
 | HTTP Code | Error Code | Description | AI Action |
 |-----------|------------|-------------|-----------|
@@ -461,11 +489,21 @@ GET https://api-preprod.phonepe.com/apis/pg-sandbox/payments/v2/order/TX123456/s
 
 **Description:** Retrieves the status of a specific payment transaction attempt by `transactionId`.
 
+### **Dependencies**
+
+* **Auth Provider:** [SKILL_AUTH_GENERATE](../SKILL.md#1-authentication-skill-base)
+
 ### **Endpoints**
 
 | Environment | Method | URL |
 |-------------|--------|-----|
 | Sandbox     | GET    | `https://api-preprod.phonepe.com/apis/pg-sandbox/payments/v2/transaction/{transactionId}/status` |
 | Production  | GET    | `https://api.phonepe.com/apis/pg/payments/v2/transaction/{transactionId}/status` |
+
+### **Request Headers**
+
+```
+Authorization: O-Bearer <access_token>
+```
 
 > Use `CUSTOM_CHECKOUT_ORDER_STATUS` for most use cases. Use this endpoint only when tracking a specific transaction attempt ID.

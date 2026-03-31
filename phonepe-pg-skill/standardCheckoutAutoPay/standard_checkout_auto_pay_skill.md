@@ -117,7 +117,7 @@ Content-Type: application/json
 | `QUARTERLY` | Every quarter |
 | `HALFYEARLY` | Every six months |
 | `YEARLY` | Every year |
-| `ONDEMAND` | Merchant controls timing of each cycle |
+| `ON_DEMAND` | Merchant controls timing of each cycle |
 
 ---
 
@@ -244,7 +244,7 @@ Use the PhonePe JS SDK to open `redirectUrl` — **do NOT redirect the browser d
     "authWorkflowType": "TRANSACTION",
     "amountType": "FIXED",
     "currency": "INR",
-    "maxAmount": 47900,
+    "maxAmount": 49900,
     "frequency": "ON_DEMAND",
     "expireAt": 2717056337500,
     "pauseStartDate": null,
@@ -305,7 +305,7 @@ Merchants are responsible for scheduling cycles according to the `frequency` agr
 | `DAILY` | Trigger Notify + Redeem every day (respecting 24h gap) |
 | `WEEKLY` | Trigger Notify + Redeem once per week |
 | `MONTHLY` | Trigger Notify + Redeem once per month |
-| `ONDEMAND` | Trigger Notify + Redeem whenever a debit is needed (no fixed schedule) |
+| `ON_DEMAND` | Trigger Notify + Redeem whenever a debit is needed (no fixed schedule) |
 | Others | Trigger per the agreed interval |
 
 PhonePe does not auto-schedule redemptions — the merchant's backend is responsible for initiating each cycle.
@@ -569,6 +569,8 @@ Use the standard refund endpoint (shared with Standard Checkout one-time payment
 | Cancel endpoint | `/checkout/v2/subscriptions/{id}/cancel` → 204 | `/subscriptions/v2/{id}/cancel` → 200 |
 | Payload structure | `paymentFlow.subscriptionDetails` (nested) | Flat fields directly in `paymentFlow` |
 | Payment method | PhonePe hosted page (JS SDK required) | UPI_INTENT or UPI_COLLECT specified by merchant |
+| Order-level expiry field | `expireAfter` (integer, **seconds**) | `expireAt` (epoch **milliseconds**) |
+| Notify initial response state | `NOTIFICATION_IN_PROGRESS` | `PENDING` |
 | Pause/Revoke | User-initiated only; merchant receives webhooks | Same |
 | Best for | Web integrations | Mobile apps, merchant controls full UX |
 

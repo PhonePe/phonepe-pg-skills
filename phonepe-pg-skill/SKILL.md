@@ -3,7 +3,7 @@ name: phonepe-pg-skill
 description: Assist in integrating with PhonePe PG APIs for one-time payments and refunds
 metadata:
   author: PhonePe
-  version: "1.1.0"
+  version: "1.3.1"
 ---
 
 ## When to Apply
