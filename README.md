@@ -21,7 +21,9 @@ This repository contains **Agent Skills** for integrating with PhonePe Payment G
 This skill collection provides AI-powered assistance for:
 
 - ✅ **Authentication** - OAuth token generation and management for PhonePe PG APIs
-- ✅ **Standard Checkout** - One-time payment integration
+- ✅ **Standard Checkout** - One-time payment integration using PhonePe's hosted payment page
+- ✅ **Custom Checkout** - One-time payment with merchant-controlled UI (UPI, Card, Net Banking, UPI QR)
+- ✅ **AutoPay / Subscriptions** - Recurring payment mandate setup via Standard Checkout (hosted page) or Custom Checkout (API-based) with automated billing cycles
 - ✅ **Check Payment Status** - Query order state (COMPLETED, PENDING, FAILED) with full payment details
 - ✅ **Refunds** - Processing full or partial refunds
 
@@ -253,7 +255,7 @@ module.exports = {
 
 ## Contributing
 
-Contributions to PG Java SDK are welcome! Here's how you can contribute:
+Contributions to PhonePe PG Skills are welcome! Here's how you can contribute:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
