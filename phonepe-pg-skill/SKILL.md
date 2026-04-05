@@ -1,9 +1,9 @@
 ---
 name: phonepe-pg-skill
-description: Assist in integrating with PhonePe PG APIs for one-time payments and refunds
+description: Assist in integrating with PhonePe PG APIs for one-time payments, payment links, and refunds
 metadata:
   author: PhonePe
-  version: "1.3.1"
+  version: "1.4.0"
 ---
 
 ## When to Apply
@@ -11,12 +11,34 @@ Reference these guidelines when:
 - Implementing PhonePe PG Standard Checkout payment integration
 - Implementing PhonePe PG Custom Checkout with UPI, Card, or Net Banking
 - Setting up AutoPay / recurring subscription payments via PhonePe PG
+- Creating, notifying, cancelling, or checking status of PhonePe Payment Links
 - Generating or refreshing PhonePe PG OAuth authentication tokens
 - Processing refunds for completed PhonePe PG transactions
 - Checking PhonePe payment or subscription status
 - Handling PhonePe payment callbacks or webhook verification
 - Debugging `AUTHORIZATION_FAILED`, `INVALID_TRANSACTION_ID`, or token expiry errors
 - Switching between PhonePe sandbox and production environments
+
+---
+
+## ⚠️ Merchant Enablement — Confirm Before Integrating
+
+Not all PhonePe PG integration flows are available to all merchants by default. Each restricted flow is an **individually enabled permission** — enabling one does not enable another.
+
+| Flow | Default Available | Permission(s) Required |
+|------|:-----------------:|------------------------|
+| Standard Checkout (one-time payment) | ✅ Yes | — |
+| Custom Checkout (one-time payment) | ❌ No | **Custom Checkout** permission |
+| Standard Checkout AutoPay | ❌ No | **AutoPay** permission |
+| Custom Checkout AutoPay | ❌ No | **Custom Checkout** permission + **AutoPay** permission (both individually) |
+| Payment Links | ❌ No | **Payment Links** permission |
+
+> ℹ️ Each permission is granted independently by the PhonePe team. For example, having AutoPay enabled does **not** automatically enable Custom Checkout, and vice versa.
+
+**AI must follow this rule for any restricted flow:**
+> Before generating any integration code or configuration for Custom Checkout, AutoPay (Standard or Custom), or Payment Links — **ask the merchant to confirm** that the required permission(s) have been enabled for their account by PhonePe. If they are unsure, direct them to contact their PhonePe account manager or onboarding team. Do **not** proceed with integration steps until confirmation is received.
+
+---
 
 # **Payment Gateway Integration Skills**
 
@@ -251,3 +273,18 @@ Skills included:
 - **AUTOPAY_SUBSCRIPTION_STATUS** — Check subscription mandate status
 - **AUTOPAY_ORDER_STATUS** — Check specific order status
 - **AUTOPAY_CANCEL** — Cancel the subscription permanently
+
+---
+
+## **7. Payment Links Skills**
+
+For collecting one-time payments by generating a shareable link (no checkout UI required), refer to:
+[Payment Links](./paymentLinks/payment_links_skill.md)
+
+Skills included:
+- **PAYLINK_CREATE** — Generate a payment link and share it with the customer
+- **PAYLINK_STATUS** — Check payment link status and payment attempt details
+- **PAYLINK_NOTIFY** — Resend the payment link to customer via SMS/email
+- **PAYLINK_CANCEL** — Deactivate an active payment link
+- **PAYLINK_REFUND** — Initiate a full or partial refund for a completed payment link order
+- **PAYLINK_REFUND_STATUS** — Check the status of a refund

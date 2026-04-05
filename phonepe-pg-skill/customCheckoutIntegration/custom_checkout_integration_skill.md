@@ -1,5 +1,14 @@
 # **Custom Checkout One-Time Payment Integration**
 
+> 🔴 **MERCHANT ENABLEMENT REQUIRED — AI MUST CONFIRM BEFORE PROCEEDING**
+>
+> **Custom Checkout is not enabled by default for all merchants.** It requires explicit activation and permission grant by the PhonePe team during or after onboarding.
+>
+> **Before starting any Custom Checkout integration, the AI must ask the merchant:**
+> > *"Has your PhonePe account been enabled for Custom Checkout? This flow requires explicit permission from the PhonePe team. If you're unsure, please confirm with your PhonePe account manager or onboarding contact before proceeding."*
+>
+> Do **not** proceed with integration steps until the merchant confirms that Custom Checkout has been enabled for their account.
+
 Custom Checkout gives merchants full control over the payment UI. Unlike Standard Checkout (which uses PhonePe's hosted page), Custom Checkout lets merchants build their own payment forms and call PhonePe APIs directly for each payment mode.
 
 > ⚠️ **AI MUST inform merchants:** Custom Checkout requires more integration effort than Standard Checkout. For simple web integrations, Standard Checkout is recommended. Choose Custom Checkout only when the merchant needs full UI control.
@@ -277,6 +286,71 @@ Redirects the user to their bank's net banking portal.
 | `bankId` | String | **YES** | Bank identifier code provided by PhonePe |
 | `merchantUserId` | String | NO | Merchant's internal user ID for tracking |
 
+#### **Supported Bank IDs**
+
+> ⚠️ **HDFC Bank and State Bank of India (SBI)** require explicit enablement during merchant onboarding. Merchants must confirm with the PhonePe team whether these banks are activated for their account before using them.
+
+| Bank ID | Bank Name |
+|---------|-----------|
+| `ICIC` | ICICI Bank |
+| `HDFC` | HDFC Bank ⚠️ |
+| `UTIB` | Axis Bank |
+| `IBKL` | IDBI Bank |
+| `TMBL` | Tamilnad Mercantile Bank |
+| `FDRL` | Federal Bank |
+| `CIUB` | City Union Bank |
+| `IDIB` | Indian Bank |
+| `KVBL` | Karur Vysya Bank |
+| `KARB` | Karnataka Bank |
+| `IOBA` | Indian Overseas Bank |
+| `SIBL` | South Indian Bank |
+| `BARB` | Bank of Baroda |
+| `YESB` | Yes Bank |
+| `UBIN` | Union Bank of India |
+| `BKID` | Bank of India |
+| `DEUT` | Deutsche Bank |
+| `JAKA` | Jammu and Kashmir Bank |
+| `DLXB` | Dhanlaxmi Bank |
+| `SCBL` | Standard Chartered Bank |
+| `DCBL` | DCB Bank Personal |
+| `CBIN` | Central Bank of India |
+| `MAHB` | Bank of Maharashtra |
+| `INDB` | IndusInd Bank |
+| `KKBK` | Kotak Mahindra Bank |
+| `CNRB` | Canara Bank |
+| `CSBK` | CSB Bank Ltd |
+| `PUNB` | Punjab National Bank |
+| `RATN` | RBL Bank Limited |
+| `SVCB` | SVC Cooperative Bank Ltd |
+| `IDFB` | IDFC First Bank |
+| `PSIB` | Punjab and Sind Bank |
+| `AIRP` | Airtel Payments Bank |
+| `AUBL` | AU Small Finance Bank Limited |
+| `BDBL` | Bandhan Bank |
+| `COSB` | Cosmos Bank |
+| `ESFB` | Equitas Bank |
+| `JSFB` | Jana Small Finance Bank |
+| `JSBP` | Janata Sahakari Bank Ltd Pune |
+| `NKGS` | NKGSB Co-op Bank Ltd |
+| `SRCB` | Saraswat Bank – Retail |
+| `SBIN` | State Bank of India ⚠️ |
+| `SURY` | Suryoday Small Finance Bank Ltd |
+| `UCBA` | UCO Bank |
+| `UJVN` | Ujjivan Small Finance Bank |
+| `APGB` | Andhra Pragathi Grameena Bank |
+| `BBKM` | Bank of Bahrain and Kuwait |
+| `BCCB` | Bassein Catholic Coop Bank |
+| `DBSS` | Digibank by DBS |
+| `ESMF` | ESAF Small Finance Bank |
+| `FSFB` | Fincare Bank |
+| `KJSB` | Kalyan Janata Sahakari Bank |
+| `PKGB` | Karnataka Gramin Bank |
+| `KVGB` | Karnataka Vikas Grameena Bank |
+| `MSNU` | Mehsana Urban Coop Bank |
+| `TJSB` | TJSB Bank |
+| `ZCBL` | Zoroastrian Cooperative Bank Ltd |
+| `OTHERS` | Capital Small Finance Bank, Lakshmi Vilas Bank, Nainital Bank, Royal Bank of Scotland |
+
 #### **Example**
 
 ```json
@@ -312,22 +386,62 @@ Redirects the user to their bank's net banking portal.
 
 ---
 
+### **Card Data Encryption**
+
+> ⚠️ **PCI-DSS Compliance Required.** Sensitive card fields (`cardNumber`, `cvv`, `token`) must be encrypted **before** being sent in the request. PhonePe provides each merchant with a unique RSA public key and key index during onboarding.
+
+#### **Encryption Details**
+
+| Property | Value |
+|----------|-------|
+| Algorithm | RSA |
+| Padding | PKCS1v15 |
+| Key format | PEM-encoded RSA public key (`cardEncryptionKey`) — provided by PhonePe during onboarding |
+| Key index | Integer (`cardEncryptionKeyIndex`) — provided by PhonePe during onboarding; sent as `encryptionKeyId` in the request |
+| Output format | Base64-encoded string |
+
+#### **Encryption Reference (Python)**
+
+```python
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
+import base64
+
+def encrypt(data: str, public_key_pem: str) -> str:
+    """Encrypt sensitive card data using merchant's RSA public key from PhonePe onboarding."""
+    public_key = serialization.load_pem_public_key(
+        public_key_pem.encode(),
+        backend=default_backend()
+    )
+    encrypted = public_key.encrypt(data.encode(), padding.PKCS1v15())
+    return base64.b64encode(encrypted).decode()
+
+# Usage
+encrypted_card_number = encrypt(card_number, merchant_card_encryption_key)
+encrypted_cvv         = encrypt(cvv,         merchant_card_encryption_key)
+```
+
+> ⚠️ The `cardEncryptionKey` (PEM public key) and `cardEncryptionKeyIndex` are **merchant-specific** credentials issued by PhonePe at onboarding. Do not share or hardcode these values.
+
+---
+
 ### **Payment Mode: CARD**
 
-> ⚠️ **PCI-DSS Compliance Required.** Card data must be encrypted using RSA 4096-bit with PhonePe's encryption key before sending. In **production**, use `https://cards.phonepe.com/apis/pg/payments/v2/pay` (not `api.phonepe.com`). Sandbox uses the standard host.
+> ⚠️ **PCI-DSS Compliance Required.** Encrypt `cardNumber` and `cvv` using the merchant's PhonePe-issued RSA key (see [Card Data Encryption](#card-data-encryption) above) before sending. In **production**, use `https://cards.phonepe.com/apis/pg/payments/v2/pay` (not `api.phonepe.com`). Sandbox uses the standard host.
 
 #### **paymentMode Fields**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `type` | String | **YES** | Must be `"CARD"` |
-| `authMode` | String | **YES** | Authentication mode | `"3DS"` |
-| `cardDetails.encryptedCardNumber` | String | **YES** | RSA-encrypted card number |
-| `cardDetails.encryptionKeyId` | Long | **YES** | Key ID used for encryption (from PhonePe) |
+| `authMode` | String | **YES** | Must be `"3DS"` |
+| `cardDetails.encryptedCardNumber` | String | **YES** | RSA+PKCS1v15 encrypted card number, base64-encoded (use `cardEncryptionKey` from onboarding) |
+| `cardDetails.encryptionKeyId` | Long | **YES** | `cardEncryptionKeyIndex` provided by PhonePe during onboarding |
 | `cardDetails.cardHolderName` | String | NO | Cardholder name |
 | `cardDetails.expiry.month` | String | **YES** | Card expiry month (2 digits, e.g. `"12"`) |
 | `cardDetails.expiry.year` | String | **YES** | Card expiry year (4 digits, e.g. `"2029"`) |
-| `cardDetails.encryptedCvv` | String | **YES** | RSA-encrypted CVV |
+| `cardDetails.encryptedCvv` | String | **YES** | RSA+PKCS1v15 encrypted CVV, base64-encoded (use `cardEncryptionKey` from onboarding) |
 | `merchantUserId` | String | NO | Merchant's user ID |
 
 #### **Example** *(Production: use `https://cards.phonepe.com/apis/pg/payments/v2/pay`)*
@@ -342,14 +456,14 @@ Redirects the user to their bank's net banking portal.
             "type": "CARD",
             "authMode": "3DS",
             "cardDetails": {
-                "encryptedCardNumber": "<rsa_encrypted_card_number>",
-                "encryptionKeyId": 1,
+                "encryptedCardNumber": "<encrypt(cardNumber, cardEncryptionKey)>",
+                "encryptionKeyId": "<cardEncryptionKeyIndex>",
                 "cardHolderName": "John Doe",
                 "expiry": {
                     "month": "12",
                     "year": "2029"
                 },
-                "encryptedCvv": "<rsa_encrypted_cvv>"
+                "encryptedCvv": "<encrypt(cvv, cardEncryptionKey)>"
             },
             "merchantUserId": "USER_001"
         },
@@ -375,17 +489,17 @@ Redirects the user to their bank's net banking portal.
 
 ### **Payment Mode: TOKEN (Saved Card)**
 
-> ⚠️ Requires PCI-DSS compliance. Token is a previously saved/tokenized card. In **production**, use `https://cards.phonepe.com/apis/pg/payments/v2/pay`. Sandbox uses the standard host.
+> ⚠️ Requires PCI-DSS compliance. Token is a previously saved/tokenized card. Encrypt `token` and `cvv` using the merchant's PhonePe-issued RSA key (see [Card Data Encryption](#card-data-encryption) above). In **production**, use `https://cards.phonepe.com/apis/pg/payments/v2/pay`. Sandbox uses the standard host.
 
 #### **paymentMode Fields**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `type` | String | **YES** | Must be `"TOKEN"` |
-| `authMode` | String | **YES** | `"3DS"` |
-| `tokenDetails.encryptedToken` | String | **YES** | Encrypted card token |
-| `tokenDetails.encryptionKeyId` | Long | **YES** | Encryption key ID |
-| `tokenDetails.encryptedCvv` | String | NO | Encrypted CVV (if required) |
+| `authMode` | String | **YES** | Must be `"3DS"` |
+| `tokenDetails.encryptedToken` | String | **YES** | RSA+PKCS1v15 encrypted card token, base64-encoded (use `cardEncryptionKey` from onboarding) |
+| `tokenDetails.encryptionKeyId` | Long | **YES** | `cardEncryptionKeyIndex` provided by PhonePe during onboarding |
+| `tokenDetails.encryptedCvv` | String | NO | RSA+PKCS1v15 encrypted CVV, base64-encoded (if required) |
 | `tokenDetails.expiry.month` | String | **YES** | Token expiry month |
 | `tokenDetails.expiry.year` | String | **YES** | Token expiry year |
 | `tokenDetails.cryptogram` | String | NO | Cryptogram (for network tokens) |
@@ -408,9 +522,9 @@ Redirects the user to their bank's net banking portal.
             "type": "TOKEN",
             "authMode": "3DS",
             "tokenDetails": {
-                "encryptedToken": "<RSA-4096-encrypted-token>",
-                "encryptionKeyId": 100001,
-                "encryptedCvv": "<RSA-4096-encrypted-cvv>",
+                "encryptedToken": "<encrypt(token, cardEncryptionKey)>",
+                "encryptionKeyId": "<cardEncryptionKeyIndex>",
+                "encryptedCvv": "<encrypt(cvv, cardEncryptionKey)>",
                 "expiry": {
                     "month": "12",
                     "year": "2028"
@@ -443,7 +557,7 @@ Redirects the user to their bank's net banking portal.
 - [ ] For `UPI_INTENT`: include `deviceContext.deviceOS`; for iOS + PhonePe app, also include `merchantCallBackScheme`
 - [ ] For `NET_BANKING`, `CARD`, `TOKEN`: include `paymentFlow.merchantUrls.redirectUrl`
 - [ ] For `CARD` or `TOKEN` in **production**: use `https://cards.phonepe.com/apis/pg/payments/v2/pay` — never `api.phonepe.com`
-- [ ] Encrypt card data with PhonePe's RSA 4096-bit key before sending
+- [ ] Encrypt `cardNumber`, `cvv`, and `token` using the merchant's **PhonePe-issued RSA public key** (`cardEncryptionKey`) with **PKCS1v15 padding**, output as **base64** — both the PEM key and key index (`cardEncryptionKeyIndex`) are provided during PhonePe onboarding
 - [ ] Do NOT rename `metaInfo.udf*` keys — renamed keys cause production errors
 - [ ] After initiation, always call `CUSTOM_CHECKOUT_ORDER_STATUS` to verify the final payment state
 - [ ] Inform merchant: Custom Checkout requires more effort than Standard Checkout
