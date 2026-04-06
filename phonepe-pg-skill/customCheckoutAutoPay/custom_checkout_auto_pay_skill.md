@@ -1,4 +1,17 @@
-# **AutoPay (Recurring Payments) Integration**
+# **AutoPay (Recurring Payments) Integration — Custom Checkout**
+
+> 🔴 **MERCHANT ENABLEMENT REQUIRED — AI MUST CONFIRM BEFORE PROCEEDING**
+>
+> **Custom Checkout AutoPay requires two individually enabled permissions** — both must be granted separately by the PhonePe team:
+> 1. **Custom Checkout** permission — enables the Custom Checkout API flow.
+> 2. **AutoPay** permission — enables recurring payment mandate setup and deductions.
+>
+> Having one does **not** automatically grant the other.
+>
+> **Before starting any Custom Checkout AutoPay integration, the AI must ask the merchant:**
+> > *"Has your PhonePe account been enabled for both Custom Checkout and AutoPay (recurring payments)? These are two separate permissions — each must be individually granted by the PhonePe team. If you're unsure about either, please confirm with your PhonePe account manager or onboarding contact before proceeding."*
+>
+> Do **not** proceed with integration steps until the merchant confirms that **both the Custom Checkout and AutoPay** permissions have been individually enabled for their account.
 
 AutoPay enables merchants to collect recurring payments from customers with a single upfront authorization. After the customer authorizes the mandate, the merchant can trigger deductions automatically without requiring the customer's involvement for each payment.
 

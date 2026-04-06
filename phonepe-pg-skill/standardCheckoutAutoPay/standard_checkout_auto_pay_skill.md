@@ -1,5 +1,14 @@
 # **Standard Checkout AutoPay Integration**
 
+> 🔴 **MERCHANT ENABLEMENT REQUIRED — AI MUST CONFIRM BEFORE PROCEEDING**
+>
+> **AutoPay is not enabled by default for all merchants.** It is an individually enabled permission granted by the PhonePe team — separate from Standard Checkout, which is available by default.
+>
+> **Before starting any Standard Checkout AutoPay integration, the AI must ask the merchant:**
+> > *"Has your PhonePe account been enabled for AutoPay (recurring payments)? This is a separate permission from Standard Checkout and must be explicitly granted by the PhonePe team. If you're unsure, please confirm with your PhonePe account manager or onboarding contact before proceeding."*
+>
+> Do **not** proceed with integration steps until the merchant confirms that the **AutoPay** permission has been enabled for their account.
+
 Standard Checkout AutoPay enables merchants to set up UPI recurring payment mandates using PhonePe's **hosted checkout page**. Customers authorize the mandate once through PhonePe's UI; all future deductions happen automatically.
 
 > **Key distinction from Custom Checkout AutoPay:**
